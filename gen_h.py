@@ -4,6 +4,7 @@ import math
 
 # from glob_h import *  # FUCK YOU WILDCARD IMPORT WANNING
 from glob_h import Item, Cid
+from dist import poisson_dist, exp_dist
 
 INIT_SEED = -1  # dist.h
 
@@ -171,8 +172,10 @@ class Taxonomy:
         self.item_len = None    # static const LINT  # ASCII field-width of item-id
 
         next_child = self.nroots
-        # TODO: PoissonDist
+
+        # DONE: dist
         # PoissonDist nchildren(fanout-1);        # string length
+        nchildren = poisson_dist(fanout - 1)
 
         # initialize parents (or lack thereof) for roots
         # self.par = [-1] * self.nroots
@@ -183,7 +186,7 @@ class Taxonomy:
         j = next_child
         while i < self.nitems and next_child < self.nitems:
             self.child_start[i] = next_child
-            # next_child += nchildren() + 1   # TODO: PoissonDist
+            next_child += nchildren + 1   # PoissonDist
             if  next_child > self.nitems:
                 next_child = self.nitems
             self.child_end[i] = next_child
@@ -195,18 +198,18 @@ class Taxonomy:
     # public:
     def write(self, fp):                # TODO: BINARY OUTPUT
         "write taxonomy to file"
-        for i in self.nitems:
+        for i in range(self.nitems):
             if self.par[i] >= 0:
                 if i != self.par[i]: raise ValueError('assert(i != par[i]);') # assert
-                fp.write(i)             # TODO: Size of write
-                fp.write(self.par[i])   # TODO: Size of write
+                fp.write(i)             # TODO: Size of write?
+                fp.write(self.par[i])   # TODO: Size of write?
 
     def write_asc(self, fp):
         "write taxonomy to ASCII file"
-        for i in self.nitems:
+        for i in range(self.nitems):
             if self.par[i] >= 0:
                 if i != self.par[i]: raise ValueError('assert(i != par[i]);') # assert
-                fp.write('{} {}\n'.format(i, self.par[i]))    # TODO: Format
+                fp.write('{} {}\n'.format(i, self.par[i]))    # TODO: Format?
 
     def display(self, fp):
         "display taxonomy (for user)"
@@ -249,9 +252,11 @@ class ItemSet:
     """
     0 is a valid item here (get rid of it when actually adding item
     """
-    # TODO: Taxonomy *tax <- point for what?
+    # DONE: Taxonomy *tax <- point to tax
     # ItemSet(LINT nitems, Taxonomy *tax = NULL);
     def __init__(self, nitems: int, tax: list = None):
+        # nitems: number of items
+        # tax: taxonomy (optional)
     # private:
         self.nitems = nitems    # LINT      # number of items
         self.tax = tax          # Taxonomy* # taxonomy (optional)
@@ -259,6 +264,42 @@ class ItemSet:
         self.tax_prob = None    # FLOAT*    # cumulative probability of choosing a child
         # TODO: UniformDist()
         self.rand = None        # UniformDist
+    
+        # ExpDist freq;
+        freq = exp_dist
+
+        self.cum_prob = [freq()] * nitems       # FLOAT
+        if tax is not None:
+            self.tax_prob = [None] * nitems     # FLOAT
+
+        # for(i = 0; i < nitems; i++){ cum_prob[i] = freq(); }
+        # prob. that this pattern will be picked
+
+        if tax is not None:
+            # weight(itm) += wieght(children)
+            # normalize probabilities for the roots and for children
+            self.normalize(self.cum_prob, 0, self.tax.num_roots()-1)
+            i = 0
+            while i < self.nitems and self.tax.num_children(i) > 0:
+                self.normalize(self.cum_prob, self.tax.first_child(i), self.tax.last_child(i))
+                i += 1
+
+            # calulate cumulative probabilities for children
+            for i in range(self.nitems):
+                self.tax_prob[i] = self.cum_prob[i]
+            for i in range(1, self.nitems):
+                if self.tax.num_children(i) > 0:
+                    for j in range(self.tax.first_child(i), self.tax.last_child(i)):
+                        self.tax_prob[j+1] += self.tax_prob[j]
+    
+            # set real probabilities
+            for i in range(self.tax.num_roots(), self.nitems):
+                self.cum_prob[i] *= self.cum_prob[ self.tax.parent(i) ] * self.tax.depth_ratio()
+
+        # normalize probabilites (why -- see get_pat)
+        self.normalize(self.cum_prob, 0, self.nitems-1)
+        for i in range(1, self.nitems):  # calulate cumulative probabilities
+            self.cum_prob[i] += self.cum_prob[i-1]
 
     def normalize(self, prob: list, low: int, high: int):
         # prob: list of float
