@@ -156,29 +156,64 @@ class Taxonomy:
     # friend class TaxStat;
     def __init__(self, nitems: int, nroots: int, fanout: float, depth_ratio: float):
     # private:
-        self.nitems = None  # LINT  # number of items
-        self.nroots = None  # LINT  # number of roots
-        self.depth = None   # FLOAT # used when assigning probabilities to items
+        self.nitems = nitems        # LINT  # number of items
+        self.nroots = nroots        # LINT  # number of roots
+        self.depth = depth_ratio    # FLOAT # used when assigning probabilities to items
 
-        # TODO: Pointer
-        self.par = []           # LINT*
-        self.child_start = []   # LINT*
-        self.child_end = []     # LINT*
+        # DONE: Pointer? YES
+        # allocate memory
+        self.par = [-1] * self.nroots           # LINT[nitems]
+        self.child_start = [None] * self.nroots # LINT[nitems]
+        self.child_end = [None] * self.nroots   # LINT[nitems]
 
         self.item_len = None    # static const LINT  # ASCII field-width of item-id
-   
+
+        next_child = self.nroots
+        # TODO: PoissonDist
+        # PoissonDist nchildren(fanout-1);        # string length
+
+        # initialize parents (or lack thereof) for roots
+        # self.par = [-1] * self.nroots
+        #   just N line before...
+        
+        # set up all the interior nodes
+        i = 0
+        j = next_child
+        while i < self.nitems and next_child < self.nitems:
+            self.child_start[i] = next_child
+            # next_child += nchildren() + 1   # TODO: PoissonDist
+            if  next_child > self.nitems:
+                next_child = self.nitems
+            self.child_end[i] = next_child
+            while j < next_child:
+                self.par[j] = i
+                j += 1
+            i += 1
+
     # public:
-    def write(self, fp):
+    def write(self, fp):                # TODO: BINARY OUTPUT
         "write taxonomy to file"
-        pass
+        for i in self.nitems:
+            if self.par[i] >= 0:
+                if i != self.par[i]: raise ValueError('assert(i != par[i]);') # assert
+                fp.write(i)             # TODO: Size of write
+                fp.write(self.par[i])   # TODO: Size of write
 
     def write_asc(self, fp):
         "write taxonomy to ASCII file"
-        pass
+        for i in self.nitems:
+            if self.par[i] >= 0:
+                if i != self.par[i]: raise ValueError('assert(i != par[i]);') # assert
+                fp.write('{} {}\n'.format(i, self.par[i]))    # TODO: Format
 
     def display(self, fp):
         "display taxonomy (for user)"
-        pass
+        fp.write('Taxonomy: \n')
+        i = 0
+        while i < self.nitems and self.child_start[i] > 0:
+            fp.write('{} {} {}\n'.format(i, self.child_start[i], self.child_end[i] - 1))
+            i += 1
+        fp.write('\n')
 
     def depth_ratio(self) -> float:
         return self.depth
