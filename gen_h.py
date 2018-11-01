@@ -1,5 +1,6 @@
 # TODO: W0614:Unused import ... from wildcard import
 # from glob_h import *  # FUCK YOU WILDCARD IMPORT WANNING
+import math
 from glob_h import Item, Cid
 
 INIT_SEED = -1  # dist.h
@@ -21,7 +22,11 @@ class PatternPar:
         self.seed = 0       # LINT
 
     def write(self, fp):
-        pass
+        print("\tNumber of patterns = " + self.npats, file = fp)
+        print("\tAverage length of pattern = " + self.patlen, file = fp)
+        print("\tCorrelation between consecutive patterns = " + self.corr, file = fp)
+        print("\tAverage confidence in a rule = " + self.conf, file = fp)
+        print("\tVariation in the confidence = " + self.conf_var, file = fp)
 
 
 class TransPar:
@@ -37,7 +42,12 @@ class TransPar:
         self.seed = INIT_SEED       # LINT          # LINT Seed to initialize RandSeed with before x-act generation
 
     def write(self, fp):
-        pass
+        print("Number of transactions in database = " + self.ntrans, file = fp)
+        print("Average transaction length = " + self.tlen, file = fp)
+        print("Number of items = " + self.nitems, file = fp)
+        print("Large Itemsets:", file = fp)
+        self.lits.write(fp)
+        print(file = fp)
 
 
 class TaxPar(TransPar):
@@ -55,10 +65,51 @@ class TaxPar(TransPar):
         calculates nroots, given nlevels
         default values: nroots = 250, fanout = 5
         """
-        pass
+        nset = 0
+        if self.nlevels != 0: nset += 1
+        if self.fanout != 0: nset += 1
+        if self.nroots != 0: nset += 1
+        
+        # switch (nset) case
+        if nset == 0:
+            self.nroots = 250
+            self.fanout = 5.0
+            return
+
+        elif nset == 1:
+            if self.nlevels == 0: raise ValueError('assert (nlevels == 0);') # assert
+            if self.fanout == 0:
+                self.fanout = 5
+            elif self.nroots == 0:
+                self.nroots = 250
+            return
+
+        elif nset == 2:
+            if self.nlevels == 0:   # all set!
+                return
+            if (self.fanout != 0):   # calculate nroots
+                self.nroots = self.nitems / (1 + pow(self.fanout, self.nlevels - 1))
+                if self.nroots < 1: 
+                    self.nroots = 1
+            elif self.nroots != 0:   # calculate fanout
+                temp = self.nitems / self.nroots - 1
+                temp = math.log(temp) / (self.nlevels - 1)
+                self.fanout = math.exp(temp)
+            return
+
+        elif nset == 3: # all set!
+            return
 
     def write(self, fp):
-        pass
+        print("Number of transactions in database = " + self.ntrans, file=fp)
+        print("Average transaction length = " + self.tlen, file=fp)
+        print("Number of items = " + self.nitems, file=fp)
+        print("Number of roots = " + self.nroots, file=fp)
+        print("Number of levels = " + self.nlevels, file=fp)
+        print("Average fanout = " + self.fanout, file=fp)
+        print("Large Itemsets:", file=fp)
+        self.lits.write(fp)
+        print(file=fp)
 
 
 class SeqPar: 
@@ -85,7 +136,19 @@ class SeqPar:
         self.lseq.patlen = 4.0
 
     def write(self, fp):
-        pass
+        print("Number of customers in database = " + self.ncust, file=fp)
+        print("Average sequence length = " + self.slen, file=fp)
+        print("Average transaction length = " + self.tlen, file=fp)
+        print("Number of items = " + self.nitems, file=fp)
+        print("Repetition-level = " + self.rept, file=fp)
+        print("Variation in repetition-level = " + self.rept_var, file=fp)
+
+        print("Large Itemsets:", file=fp)
+        self.lits.write(fp)
+        print("Large Sequences:", file=fp)
+        self.lseq.write(fp)
+        print(file=fp)
+
 
 # ===== Taxonomy ===== 
 
@@ -98,9 +161,9 @@ class Taxonomy:
         self.depth = None   # FLOAT # used when assigning probabilities to items
 
         # TODO: Pointer
-        self.par = []       # LINT*
-        self.child_start = [] # LINT*
-        self.child_end = []   # LINT*
+        self.par = []           # LINT*
+        self.child_start = []   # LINT*
+        self.child_end = []     # LINT*
 
         self.item_len = None    # static const LINT  # ASCII field-width of item-id
    
