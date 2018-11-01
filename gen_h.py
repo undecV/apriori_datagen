@@ -1,6 +1,9 @@
+# -*- coding: UTF-8 -*-
+
 # TODO: W0614:Unused import ... from wildcard import
-# from glob_h import *  # FUCK YOU WILDCARD IMPORT WANNING
 import math
+
+# from glob_h import *  # FUCK YOU WILDCARD IMPORT WANNING
 from glob_h import Item, Cid
 
 INIT_SEED = -1  # dist.h
