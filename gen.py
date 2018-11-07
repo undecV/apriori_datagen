@@ -405,8 +405,8 @@ class String:
     # friend class StringSet;
     def __init__(self, nitems: int):
     # private:
-        self.nitems = nitems    # LINT  # number of items
-        self.items = None   # Item*     # list of the items
+        self.nitems = nitems            # LINT      # number of items
+        self.items = [None] * nitems    # Item*     # list of the items
       # self.rval           # FLOAT*    # random value (used to get random ordering of the items)
       # self.ritems         # Item*     # randomly chosen items
         self.prob = None    # FLOAT     # probability that this string is chosen
@@ -416,13 +416,24 @@ class String:
 
     # public:
     def display(self, fp, prob_comp: int = 1):
-        pass
+        print('{:6} {:6} '.format(prob_comp * self.prob, self.conf), file=fp)
+        for i in range(self.nitems):
+            print(' ' + self.items[i], end='', file=fp)
+        print(file=fp)
 
     # TODO: [pylint] E0601:Using variable 'StringSet' before assignment
     # StringSet: StringSet
     # def display_(self, fp, lits: StringSet, prob_comp:int = 1):
     def display_(self, fp, lits, prob_comp: int = 1):
-        pass
+        # StringP lstr;
+        print('{:6} {:6} '.format(prob_comp * self.prob, self.conf), file=fp)
+        for i in range(self.nitems):
+            print("  << ", end='', file=fp)
+            lstr = lits.get_pat(self.items[i])
+            for j in range(lstr.nitems):
+                print("{} ".format(lstr.items[j]), end='', file=fp)
+            print(">>", end='', file=fp)
+        print(file=fp)
 
 # typedef String *StringP;
 StringP = String
