@@ -1,6 +1,7 @@
 # -*- coding: UTF-8 -*-
 
 import math
+import random
 
 # from glob_h import *  # FUCK YOU WILDCARD IMPORT WANNING
 from glob_h import Item, Cid
@@ -252,9 +253,9 @@ class ItemSet:
     """
     0 is a valid item here (get rid of it when actually adding item
     """
-    # DONE: Taxonomy *tax <- point to tax
+    # DONE: Taxonomy *tax <- just a point to tax
     # ItemSet(LINT nitems, Taxonomy *tax = NULL);
-    def __init__(self, nitems: int, tax: list = None):
+    def __init__(self, nitems: int, tax: Taxonomy = None):
         # nitems: number of items
         # tax: taxonomy (optional)
     # private:
@@ -303,23 +304,101 @@ class ItemSet:
 
     def normalize(self, prob: list, low: int, high: int):
         # prob: list of float
-        pass
-
-    # public:
-    def display(self, fp):
-        pass
+        """normalize probabilities between low and high"""
+        tot = 0.0  # FLOAT
+        # normalize probabilites
+        for i in range(low, high+1):
+            tot += prob[i]
+        for i in range(low, high+1):
+            prob[i] /= tot
 
     def get_item(self) -> Item:
-        "returns a random item (weighted)"
-        pass
+        """
+        gen.h: returns a random item (weighted)
+        gen.c: returns a pattern chosen at random
+        """
+        r = 0.0  # FLOAT
+        i = 0  # LINT
+
+        # find the desired pattern using cum_prob table
+        r = random.random()  # TODO: unknown RAND_MAX
+        # want item i such that cum_prob[i-1] < r <= cum_prob[i];
+        i = r * self.nitems  # guess location of item
+        i += (r - self.cum_prob[i]) * self.nitems  # refine guess
+        if i >= self.nitems:  # check boundaries
+            i = self.nitems-1
+        if i < 0:
+            i = 0
+        while i < (self.nitems-  1) and r > self.cum_prob[i]:  # find item
+            i += 1
+        while i > 0 and r <= self.cum_prob[i-1]:
+            i -= 1
+        return i
     
     def specialize(self, itm: Item) -> Item:
         "if no taxonomy, returns itm"
-        pass
-    
+        r = 0.0  # FLOAT
+        i = 0  # LINT
+        nchildren = 0  # LINT
+        first = Item()  # Item
+        last = Item()  # Item
+
+        if self.tax is None:  # no taxonomy
+            return itm
+        
+        nchildren = self.tax.num_children(itm)
+        if nchildren == 0:  # no children
+            return itm 
+        first = self.tax.child(itm, 0)
+        last = self.tax.child(itm, nchildren - 1)
+
+        # find the desired pattern using cum_prob table
+        r = random.random()  # TODO: unknown RAND_MAX
+        i = first + r * nchildren
+        if i == last:
+            i -= 1
+        while i < last and r > self.tax_prob[i]: 
+            i += 1
+        while i > first and r < self.tax_prob[i-1]:
+            i -= 1
+        return self.specialize(i)
+
     def weight(self, itm: Item) -> float:
         "returns prob. of choosing item"
-        pass
+        if itm == 0: 
+            return self.cum_prob[itm]
+        else:
+            return self.cum_prob[itm] - self.cum_prob[itm-1]
+
+    # public:
+    def display(self, fp):
+        # if (tax != NULL)
+        #     tax->display(fp);
+        print("Items:", file=fp)
+        # fp << setprecision(3);
+        
+        if self.tax is not None:
+            if self.cum_prob[0] * self.nitems > 10:
+                print("{}  {} {} {}".format(0, self.cum_prob[0] * self.nitems, 
+                    self.tax.first_child(0), self.tax.last_child(0)), file=fp)
+            for i in range(1, self.nitems):
+                if (self.cum_prob[i] - self.cum_prob[i-1]) * self.nitems > 10:
+                    print("{}  {} {} {}".format(
+                        i, 
+                        (self.cum_prob[i]-self.cum_prob[i-1]) * self.nitems, 
+                        self.tax.first_child(0), 
+                        self.tax.last_child(0)
+                        ), file=fp)
+        else: 
+            if self.cum_prob[0] * self.nitems > 5: 
+                print("{}  {}".format(0, self.cum_prob[0] * self.nitems), file=fp)
+            for i in range(1, self.nitems):
+                if (self.cum_prob[i]-self.cum_prob[i-1]) * self.nitems > 5: 
+                    print("{}  {}".format(
+                        i, 
+                        (self.cum_prob[i]-self.cum_prob[i-1]) * self.nitems
+                        ), file=fp)
+        print(file=fp)
 
 
 class String:
