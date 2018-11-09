@@ -1,0 +1,11 @@
+*.o
+
+# Main program
+gen
+
+# Generated file(s) by mode `lit` `tax`
+pat
+data
+
+# Generated file(s) by mode `tax`
+tax
